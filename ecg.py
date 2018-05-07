@@ -123,15 +123,22 @@ class RPeaks:
         return [data_points[index].time for index in x_peaks]
 
 
-def measure_heart_rate(r_peaks):
+class HeartRate:
     PEAKS = 10
 
-    if len(r_peaks.r_times) < PEAKS:
-        return -1
+    def __init__(self):
+        self.data = []
 
-    time_distance = r_peaks.r_times[-1] - r_peaks.r_times[-PEAKS]
+    def update(self, r_peaks):
+        if len(r_peaks.r_times) < HeartRate.PEAKS:
+            return
 
-    return 60 * (PEAKS - 1) / time_distance
+        if len(self.data) and r_peaks.r_times[-1] == self.data[-1].time:
+            return
+
+        time_distance = r_peaks.r_times[-1] - r_peaks.r_times[- HeartRate.PEAKS]
+
+        self.data.append(DataPoint(time=r_peaks.r_times[-1], value=(60 * (HeartRate.PEAKS - 1) / time_distance)))
 
 
 class ECG:
@@ -139,18 +146,20 @@ class ECG:
         self.start_time = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
         self.raw_data = RawData(serial_name)
         self.r_peaks = RPeaks()
+        self.heart_rate = HeartRate()
 
     def update(self):
         self.raw_data.update()
         self.r_peaks.update(self.raw_data)
-        print(measure_heart_rate(self.r_peaks))
+        self.heart_rate.update(self.r_peaks)
 
     def save(self):
         print("Saving data to {}.json ...".format(self.start_time))
 
         model = {
             'raw_data': self.raw_data.parsed_data,
-            'r_peaks': self.r_peaks.r_times
+            'r_peaks': self.r_peaks.r_times,
+            'heart_rate': self.heart_rate.data
         }
 
         with open('{}.json'.format(self.start_time), 'w') as outfile:
@@ -174,6 +183,7 @@ class ECG:
 
 
         plt.show()
+
 
 if __name__ == "__main__":
 
