@@ -124,21 +124,27 @@ class RPeaks:
 
 
 class HeartRate:
-    PEAKS = 10
-
-    def __init__(self):
+    def __init__(self, number_of_peaks=10):
         self.data = []
+        self.number_of_peaks = number_of_peaks
+
+    @staticmethod
+    def calculate_heart_rate(r_times):
+        time_distance = r_times[-1] - r_times[0]
+        return 60 * (len(r_times) - 1) / time_distance
 
     def update(self, r_peaks):
-        if len(r_peaks.r_times) < HeartRate.PEAKS:
+        if len(r_peaks.r_times) < self.number_of_peaks:
             return
 
         if len(self.data) and r_peaks.r_times[-1] == self.data[-1].time:
             return
 
-        time_distance = r_peaks.r_times[-1] - r_peaks.r_times[- HeartRate.PEAKS]
-
-        self.data.append(DataPoint(time=r_peaks.r_times[-1], value=(60 * (HeartRate.PEAKS - 1) / time_distance)))
+        self.data.append(
+            DataPoint(time=r_peaks.r_times[-1],
+                      value=HeartRate.calculate_heart_rate(r_peaks.r_times[-self.number_of_peaks:])
+            )
+        )
 
 
 class ECG:
