@@ -8,35 +8,6 @@ import peakutils
 import json
 import matplotlib.pyplot as plt
 
-# class RawData:
-#     def update():
-#         pass
-#
-# class RPeaks:
-#     def update(raw_data):
-#         pass
-#
-# class QPeaks:
-#     def update(raw_data):
-#         pass
-#
-# class HR:
-#     def update(rpeaks):
-#         pass
-#
-# class ECG:
-#     def __init__():
-#         self.raw_data = RawData()
-#         self.rpeaks = ...
-#         self.qpeaks = ...
-#         self.hr = HR()
-#         self.hrv = ...
-#
-#     def update():
-#         self.rpeaks.update(self.raw_data)
-#         self.qpeaks.update(self.raw_data)
-#         self.hr.update(self.rpeaks)
-
 
 DataPoint = namedtuple("DataPoint", ["time", "value"])
 
@@ -187,6 +158,12 @@ class ECG:
 
         plt.plot(self.r_peaks.r_times, values, 'ro')
 
+        X = [data_point.time for data_point in self.heart_rate.data]
+        Y = [data_point.value for data_point in self.heart_rate.data]
+
+        plt.figure()
+
+        plt.plot(X, Y)
 
         plt.show()
 
