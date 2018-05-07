@@ -25,17 +25,17 @@ class RawData:
             print(exception)
             raise(exception)
 
-        self.buffered_data = b""
-        self.parsed_data = []
+        self.buffer = b""
+        self.data = []
 
     def read(self):
-        self.buffered_data += self.serial_device.read(RawData.PACKAGE_SIZE)
+        self.buffer += self.serial_device.read(RawData.PACKAGE_SIZE)
 
     def parse(self):
-        split_position = self.buffered_data.find(RawData.SPLIT_STRING)
+        split_position = self.buffer.find(RawData.SPLIT_STRING)
 
         if split_position != -1:
-            data_value = self.buffered_data[:split_position].decode('utf-8')
+            data_value = self.buffer[:split_position].decode('utf-8')
             data_time = time.time()
 
             try:
@@ -43,9 +43,9 @@ class RawData:
             except ValueError:
                 data_value = -1
 
-            self.parsed_data.append(DataPoint(time=data_time, value=data_value))
+            self.data.append(DataPoint(time=data_time, value=data_value))
 
-            self.buffered_data = self.buffered_data[split_position + len(RawData.SPLIT_STRING):]
+            self.buffer = self.buffer[split_position + len(RawData.SPLIT_STRING):]
 
     def update(self):
         self.read()
@@ -59,17 +59,17 @@ class RPeaks:
         self.r_times = []
 
     def update(self, raw_data):
-        if (len(raw_data.parsed_data) and raw_data.parsed_data[-1].time - raw_data.parsed_data[0].time) < RPeaks.TIME_WINDOW:
+        if (len(raw_data.data) and raw_data.data[-1].time - raw_data.data[0].time) < RPeaks.TIME_WINDOW:
             return
 
         if len(self.r_times):
             window_start_time = self.r_times[-1] - RPeaks.TIME_WINDOW
         else:
-            window_start_time = raw_data.parsed_data[-1].time - RPeaks.TIME_WINDOW
+            window_start_time = raw_data.data[-1].time - RPeaks.TIME_WINDOW
 
         filtered_data = []
 
-        for data_point in reversed(raw_data.parsed_data):
+        for data_point in reversed(raw_data.data):
             if data_point.time < window_start_time:
                 break
             filtered_data.append(data_point)
@@ -134,7 +134,7 @@ class ECG:
         print("Saving data to {}.json ...".format(self.start_time))
 
         model = {
-            'raw_data': self.raw_data.parsed_data,
+            'raw_data': self.raw_data.data,
             'r_peaks': self.r_peaks.r_times,
             'heart_rate': self.heart_rate.data
         }
@@ -143,15 +143,15 @@ class ECG:
             json.dump(model, outfile)
 
     def plot(self):
-        X = [data_point.time for data_point in self.raw_data.parsed_data]
-        Y = [data_point.value for data_point in self.raw_data.parsed_data]
+        X = [data_point.time for data_point in self.raw_data.data]
+        Y = [data_point.value for data_point in self.raw_data.data]
 
         plt.plot(X, Y)
 
         values = []
 
         for r_time in self.r_peaks.r_times:
-            for data_point in self.raw_data.parsed_data:
+            for data_point in self.raw_data.data:
                 if data_point.time == r_time:
                     values.append(data_point.value)
                     break
