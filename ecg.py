@@ -40,10 +40,9 @@ class RawData:
 
             try:
                 data_value = int(data_value)
+                self.data.append(DataPoint(time=data_time, value=data_value))
             except ValueError:
-                data_value = -1
-
-            self.data.append(DataPoint(time=data_time, value=data_value))
+                pass
 
             self.buffer = self.buffer[split_position + len(RawData.SPLIT_STRING):]
 
@@ -55,21 +54,22 @@ class RawData:
 class RPeaks:
     TIME_WINDOW = 5
 
-    def __init__(self):
+    def __init__(self, data_source):
         self.r_times = []
+        self.data_source = data_source
 
-    def update(self, raw_data):
-        if (len(raw_data.data) and raw_data.data[-1].time - raw_data.data[0].time) < RPeaks.TIME_WINDOW:
+    def update(self):
+        if (len(self.data_source.data) and self.data_source.data[-1].time - self.data_source.data[0].time) < RPeaks.TIME_WINDOW:
             return
 
         if len(self.r_times):
             window_start_time = self.r_times[-1] - RPeaks.TIME_WINDOW
         else:
-            window_start_time = raw_data.data[-1].time - RPeaks.TIME_WINDOW
+            window_start_time = self.data_source.data[-1].time - RPeaks.TIME_WINDOW
 
         filtered_data = []
 
-        for data_point in reversed(raw_data.data):
+        for data_point in reversed(self.data_source.data):
             if data_point.time < window_start_time:
                 break
             filtered_data.append(data_point)
@@ -95,8 +95,9 @@ class RPeaks:
 
 
 class HeartRate:
-    def __init__(self, number_of_peaks=10):
+    def __init__(self, data_source, number_of_peaks=10):
         self.data = []
+        self.data_source = data_source
         self.number_of_peaks = number_of_peaks
 
     @staticmethod
@@ -104,16 +105,16 @@ class HeartRate:
         time_distance = r_times[-1] - r_times[0]
         return 60 * (len(r_times) - 1) / time_distance
 
-    def update(self, r_peaks):
-        if len(r_peaks.r_times) < self.number_of_peaks:
+    def update(self):
+        if len(self.data_source.r_times) < self.number_of_peaks:
             return
 
-        if len(self.data) and r_peaks.r_times[-1] == self.data[-1].time:
+        if len(self.data) and self.data_source.r_times[-1] == self.data[-1].time:
             return
 
         self.data.append(
-            DataPoint(time=r_peaks.r_times[-1],
-                      value=HeartRate.calculate_heart_rate(r_peaks.r_times[-self.number_of_peaks:])
+            DataPoint(time=self.data_source.r_times[-1],
+                      value=HeartRate.calculate_heart_rate(self.data_source.r_times[-self.number_of_peaks:])
             )
         )
 
@@ -122,13 +123,13 @@ class ECG:
     def __init__(self, serial_name):
         self.start_time = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
         self.raw_data = RawData(serial_name)
-        self.r_peaks = RPeaks()
-        self.heart_rate = HeartRate()
+        self.r_peaks = RPeaks(self.raw_data)
+        self.heart_rate = HeartRate(self.r_peaks)
 
     def update(self):
         self.raw_data.update()
-        self.r_peaks.update(self.raw_data)
-        self.heart_rate.update(self.r_peaks)
+        self.r_peaks.update()
+        self.heart_rate.update()
 
     def save(self):
         print("Saving data to {}.json ...".format(self.start_time))
@@ -171,9 +172,9 @@ class ECG:
 if __name__ == "__main__":
 
     if sys.platform == "darwin":
-        serial_name = "/dev/tty.usbmodemFD1221"
+        serial_name = "/dev/tty.usbmodemFD1241"
     else:
-        serial_name = "/dev/ttyACM0"
+        serial_name = "/dev/ttyACM1"
 
     ecg = ECG(serial_name)
 
