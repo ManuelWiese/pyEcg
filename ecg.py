@@ -17,7 +17,7 @@ class RawData:
     BAUD_RATE = 9600
     PACKAGE_SIZE = 5
     SPLIT_STRING = "\r\n".encode()
-    WARMUP_STEPS = 100
+    WARMUP_STEPS = 500
 
     def __init__(self, serial_name):
         try:
@@ -45,12 +45,13 @@ class RawData:
         split_position = self.buffer.find(RawData.SPLIT_STRING)
 
         if split_position != -1:
-            data_value = self.buffer[:split_position].decode('utf-8')
-
             try:
+                data_value = self.buffer[:split_position].decode('utf-8')
                 self.add_data(data_value)
             except ValueError:
                 pass
+            except UnicodeDecodeError as e:
+                print(e)
 
             self.buffer = self.buffer[split_position + len(RawData.SPLIT_STRING):]
 
