@@ -17,6 +17,7 @@ class RawData:
     BAUD_RATE = 9600
     PACKAGE_SIZE = 5
     SPLIT_STRING = "\r\n".encode()
+    WARMUP_STEPS = 100
 
     def __init__(self, serial_name):
         try:
@@ -27,20 +28,27 @@ class RawData:
 
         self.buffer = b""
         self.data = []
+        self.warmup_counter = 0
 
     def read(self):
         self.buffer += self.serial_device.read(RawData.PACKAGE_SIZE)
+
+    def add_data(self, data_value):
+        if self.warmup_counter < RawData.WARMUP_STEPS:
+            self.warmup_counter += 1
+            return
+
+        data_value = int(data_value)
+        self.data.append(DataPoint(time=time.time(), value=data_value))
 
     def parse(self):
         split_position = self.buffer.find(RawData.SPLIT_STRING)
 
         if split_position != -1:
             data_value = self.buffer[:split_position].decode('utf-8')
-            data_time = time.time()
 
             try:
-                data_value = int(data_value)
-                self.data.append(DataPoint(time=data_time, value=data_value))
+                self.add_data(data_value)
             except ValueError:
                 pass
 
