@@ -55,15 +55,15 @@ class RPeaks:
     TIME_WINDOW = 5
 
     def __init__(self, data_source):
-        self.r_times = []
+        self.data = []
         self.data_source = data_source
 
     def update(self):
         if (len(self.data_source.data) and self.data_source.data[-1].time - self.data_source.data[0].time) < RPeaks.TIME_WINDOW:
             return
 
-        if len(self.r_times):
-            window_start_time = self.r_times[-1] - RPeaks.TIME_WINDOW
+        if len(self.data):
+            window_start_time = self.data[-1].time - RPeaks.TIME_WINDOW
         else:
             window_start_time = self.data_source.data[-1].time - RPeaks.TIME_WINDOW
 
@@ -76,22 +76,22 @@ class RPeaks:
 
         filtered_data = list(reversed(filtered_data))
 
-        new_r_times = RPeaks.find_peaks(filtered_data)
+        new_data = RPeaks.find_peaks(filtered_data)
 
         try:
-            max_r_time = max(self.r_times)
+            max_r_time = max([data.time for data in self.data])
         except ValueError:
             max_r_time = 0
 
-        new_r_times = [r_time for r_time in new_r_times if r_time > max_r_time]
+        new_data = [data for data in new_data if data.time > max_r_time]
 
-        self.r_times += new_r_times
+        self.data += new_data
 
     @staticmethod
     def find_peaks(data_points):
         filtered_values = [data_point.value for data_point in data_points]
         x_peaks = peakutils.indexes(np.array(filtered_values), thres=0.8, min_dist=30)
-        return [data_points[index].time for index in x_peaks]
+        return [data_points[index] for index in x_peaks]
 
 
 class HeartRate:
@@ -101,20 +101,20 @@ class HeartRate:
         self.number_of_peaks = number_of_peaks
 
     @staticmethod
-    def calculate_heart_rate(r_times):
-        time_distance = r_times[-1] - r_times[0]
-        return 60 * (len(r_times) - 1) / time_distance
+    def calculate_heart_rate(data):
+        time_distance = data[-1].time - data[0].time
+        return 60 * (len(data) - 1) / time_distance
 
     def update(self):
-        if len(self.data_source.r_times) < self.number_of_peaks:
+        if len(self.data_source.data) < self.number_of_peaks:
             return
 
-        if len(self.data) and self.data_source.r_times[-1] == self.data[-1].time:
+        if len(self.data) and self.data_source.data[-1].time == self.data[-1].time:
             return
 
         self.data.append(
-            DataPoint(time=self.data_source.r_times[-1],
-                      value=HeartRate.calculate_heart_rate(self.data_source.r_times[-self.number_of_peaks:])
+            DataPoint(time=self.data_source.data[-1].time,
+                      value=HeartRate.calculate_heart_rate(self.data_source.data[-self.number_of_peaks:])
             )
         )
 
@@ -136,7 +136,7 @@ class ECG:
 
         model = {
             'raw_data': self.raw_data.data,
-            'r_peaks': self.r_peaks.r_times,
+            'r_peaks': self.r_peaks.data,
             'heart_rate': self.heart_rate.data
         }
 
@@ -149,15 +149,11 @@ class ECG:
 
         plt.plot(X, Y)
 
-        values = []
+        X = [data_point.time for data_point in self.r_peaks.data]
+        Y = [data_point.value for data_point in self.r_peaks.data]
 
-        for r_time in self.r_peaks.r_times:
-            for data_point in self.raw_data.data:
-                if data_point.time == r_time:
-                    values.append(data_point.value)
-                    break
+        plt.plot(X, Y, "ro")
 
-        plt.plot(self.r_peaks.r_times, values, 'ro')
 
         X = [data_point.time for data_point in self.heart_rate.data]
         Y = [data_point.value for data_point in self.heart_rate.data]
@@ -181,8 +177,8 @@ if __name__ == "__main__":
     try:
         while True:
             ecg.update()
-    except Exception as e:
-        print(e)
+    except KeyboardInterrupt as e:
+        pass
     finally:
         ecg.save()
         ecg.plot()
