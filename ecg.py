@@ -7,6 +7,7 @@ from collections import namedtuple
 import peakutils
 import json
 import matplotlib.pyplot as plt
+from math import exp
 
 
 DataPoint = namedtuple("DataPoint", ["time", "value"])
@@ -14,10 +15,10 @@ DataPoint = namedtuple("DataPoint", ["time", "value"])
 
 class RawData:
 
-    BAUD_RATE = 9600
+    BAUD_RATE = 38400
     PACKAGE_SIZE = 5
     SPLIT_STRING = "\r\n".encode()
-    WARMUP_STEPS = 500
+    WARMUP_STEPS = 100
 
     def __init__(self, serial_name):
         try:
@@ -48,16 +49,65 @@ class RawData:
             try:
                 data_value = self.buffer[:split_position].decode('utf-8')
                 self.add_data(data_value)
-            except ValueError:
-                pass
+            except ValueError as e:
+                print("Warning: ", e)
             except UnicodeDecodeError as e:
-                print(e)
+                print("Warning: ", e)
 
             self.buffer = self.buffer[split_position + len(RawData.SPLIT_STRING):]
 
     def update(self):
         self.read()
         self.parse()
+
+
+class BandPass:
+    WINDOW_SIZE = 512 # must be power of 2
+
+    def __init__(self, data_source):
+        self.data = []
+        self.data_source = data_source
+
+    @classmethod
+    def index_to_freq(cls, index, mean_time):
+        index = index % cls.WINDOW_SIZE
+        nyquist_freq = 1 / (2*mean_time)
+        if index <= cls.WINDOW_SIZE / 2:
+            return nyquist_freq * index / (cls.WINDOW_SIZE / 2)
+        else:
+            return nyquist_freq * ( (index - cls.WINDOW_SIZE / 2) / (cls.WINDOW_SIZE / 2) - 1 )
+
+    # @staticmethod
+    # def multiplier(frequency):
+    #     if frequency > 5 and frequency < 15:
+    #         return 1
+    #     if frequency > -15 and frequency < -5:
+    #         return 1
+    #     return 0
+
+    @staticmethod
+    def multiplier(frequency):
+        frequency = abs(frequency)
+        return exp( - (frequency-10)**2 / 12.5 )
+
+    def update(self):
+        if len(self.data_source.data) < type(self).WINDOW_SIZE:
+            return
+
+        filtered_data = self.data_source.data[-type(self).WINDOW_SIZE:]
+        index_base = int(len(filtered_data)/2)
+
+        mean_time = (filtered_data[-1].time - filtered_data[0].time)/len(filtered_data)
+        frequency_resolution = 1/(mean_time * type(self).WINDOW_SIZE)
+
+        mean_value = np.mean([data.value for data in filtered_data])
+
+        fft = np.fft.fft(np.array([data.value - mean_value for data in filtered_data]))
+
+        fft = np.array([value * type(self).multiplier(type(self).index_to_freq(index, mean_time)) for index, value in enumerate(fft)])
+        ifft = np.fft.ifft(fft)
+
+        self.data.append(DataPoint(time=filtered_data[index_base].time, value=ifft[index_base].real))
 
 
 class RPeaks:
@@ -67,14 +117,11 @@ class RPeaks:
         self.data = []
         self.data_source = data_source
 
-    def update(self):
-        if (len(self.data_source.data) and self.data_source.data[-1].time - self.data_source.data[0].time) < RPeaks.TIME_WINDOW:
-            return
-
+    def get_time_window(self):
         if len(self.data):
-            window_start_time = self.data[-1].time - RPeaks.TIME_WINDOW
+            window_start_time = self.data[-1].time - type(self).TIME_WINDOW
         else:
-            window_start_time = self.data_source.data[-1].time - RPeaks.TIME_WINDOW
+            window_start_time = self.data_source.data[-1].time - type(self).TIME_WINDOW
 
         filtered_data = []
 
@@ -84,6 +131,13 @@ class RPeaks:
             filtered_data.append(data_point)
 
         filtered_data = list(reversed(filtered_data))
+        return filtered_data
+
+    def update(self):
+        if (len(self.data_source.data) and self.data_source.data[-1].time - self.data_source.data[0].time) < type(self).TIME_WINDOW:
+            return
+
+        filtered_data = self.get_time_window()
 
         new_data = RPeaks.find_peaks(filtered_data)
 
@@ -99,7 +153,7 @@ class RPeaks:
     @staticmethod
     def find_peaks(data_points):
         filtered_values = [data_point.value for data_point in data_points]
-        x_peaks = peakutils.indexes(np.array(filtered_values), thres=0.8, min_dist=30)
+        x_peaks = peakutils.indexes(np.array(filtered_values), thres=0.75, min_dist=30)
         return [data_points[index] for index in x_peaks]
 
 
@@ -132,12 +186,16 @@ class ECG:
     def __init__(self, serial_name):
         self.start_time = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
         self.raw_data = RawData(serial_name)
-        self.r_peaks = RPeaks(self.raw_data)
+        self.band_pass = BandPass(self.raw_data)
+        self.r_peaks_raw = RPeaks(self.raw_data)
+        self.r_peaks = RPeaks(self.band_pass)
         self.heart_rate = HeartRate(self.r_peaks)
 
     def update(self):
         self.raw_data.update()
+        self.band_pass.update()
         self.r_peaks.update()
+        self.r_peaks_raw.update()
         self.heart_rate.update()
 
     def save(self):
@@ -158,16 +216,27 @@ class ECG:
 
         plt.plot(X, Y)
 
+        X = [data_point.time for data_point in self.r_peaks_raw.data]
+        Y = [data_point.value for data_point in self.r_peaks_raw.data]
+
+        plt.plot(X, Y, "ro")
+
+        plt.figure()
+
         X = [data_point.time for data_point in self.r_peaks.data]
         Y = [data_point.value for data_point in self.r_peaks.data]
 
         plt.plot(X, Y, "ro")
 
+        X = [data_point.time for data_point in self.band_pass.data]
+        Y = [data_point.value for data_point in self.band_pass.data]
+
+        plt.plot(X, Y)
+
+        plt.figure()
 
         X = [data_point.time for data_point in self.heart_rate.data]
         Y = [data_point.value for data_point in self.heart_rate.data]
-
-        plt.figure()
 
         plt.plot(X, Y)
 
