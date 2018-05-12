@@ -15,9 +15,11 @@ from HeartRate import HeartRate
 
 class ECG:
     def __init__(self, serial_name):
-        self.start_time = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+        self.start_time = time.time()
+        self.start_timestamp = datetime.datetime.fromtimestamp(self.start_time).strftime('%Y-%m-%d %H:%M:%S')
+
         self.raw_data = RawData(serial_name)
-        self.band_pass = Equalizer(self.raw_data, transfer_function=lambda frequency : exp( - (abs(frequency)-10)**2 / 12.5 ))
+        self.band_pass = Equalizer(self.raw_data, transfer_function=lambda frequency : 1 if abs(frequency) > 5 and abs(frequency) < 15 else 0 )
         self.r_peaks_raw = RPeaks(self.raw_data)
         self.r_peaks = RPeaks(self.band_pass)
         self.heart_rate = HeartRate(self.r_peaks)
@@ -30,43 +32,44 @@ class ECG:
         self.heart_rate.update()
 
     def save(self):
-        print("Saving data to {}.json ...".format(self.start_time))
+        print("Saving data to {}.json ...".format(self.start_timestamp))
 
         model = {
+            'start_time': self.start_time,
             'raw_data': self.raw_data.data,
             'r_peaks': self.r_peaks.data,
             'heart_rate': self.heart_rate.data
         }
 
-        with open('{}.json'.format(self.start_time), 'w') as outfile:
+        with open('{}.json'.format(self.start_timestamp), 'w') as outfile:
             json.dump(model, outfile)
 
     def plot(self):
-        X = [data_point.time for data_point in self.raw_data.data]
+        X = [data_point.time - self.start_time for data_point in self.raw_data.data]
         Y = [data_point.value for data_point in self.raw_data.data]
 
         plt.plot(X, Y)
 
-        X = [data_point.time for data_point in self.r_peaks_raw.data]
+        X = [data_point.time - self.start_time for data_point in self.r_peaks_raw.data]
         Y = [data_point.value for data_point in self.r_peaks_raw.data]
 
         plt.plot(X, Y, "ro")
 
         plt.figure()
 
-        X = [data_point.time for data_point in self.r_peaks.data]
+        X = [data_point.time - self.start_time for data_point in self.r_peaks.data]
         Y = [data_point.value for data_point in self.r_peaks.data]
 
         plt.plot(X, Y, "ro")
 
-        X = [data_point.time for data_point in self.band_pass.data]
+        X = [data_point.time - self.start_time for data_point in self.band_pass.data]
         Y = [data_point.value for data_point in self.band_pass.data]
 
         plt.plot(X, Y)
 
         plt.figure()
 
-        X = [data_point.time for data_point in self.heart_rate.data]
+        X = [data_point.time - self.start_time for data_point in self.heart_rate.data]
         Y = [data_point.value for data_point in self.heart_rate.data]
 
         plt.plot(X, Y)
