@@ -61,34 +61,23 @@ class RawData:
         self.parse()
 
 
-class BandPass:
-    WINDOW_SIZE = 512 # must be power of 2
+class Equalizer:
+    WINDOW_SIZE = 512
 
-    def __init__(self, data_source):
+    def __init__(self, data_source, transfer_function):
         self.data = []
         self.data_source = data_source
+        self.transfer_function = transfer_function
 
     @classmethod
     def index_to_freq(cls, index, mean_time):
         index = index % cls.WINDOW_SIZE
         nyquist_freq = 1 / (2*mean_time)
+
         if index <= cls.WINDOW_SIZE / 2:
             return nyquist_freq * index / (cls.WINDOW_SIZE / 2)
         else:
             return nyquist_freq * ( (index - cls.WINDOW_SIZE / 2) / (cls.WINDOW_SIZE / 2) - 1 )
-
-    # @staticmethod
-    # def multiplier(frequency):
-    #     if frequency > 5 and frequency < 15:
-    #         return 1
-    #     if frequency > -15 and frequency < -5:
-    #         return 1
-    #     return 0
-
-    @staticmethod
-    def multiplier(frequency):
-        frequency = abs(frequency)
-        return exp( - (frequency-10)**2 / 12.5 )
 
     def update(self):
         if len(self.data_source.data) < type(self).WINDOW_SIZE:
@@ -104,11 +93,16 @@ class BandPass:
 
         fft = np.fft.fft(np.array([data.value - mean_value for data in filtered_data]))
 
-        fft = np.array([value * type(self).multiplier(type(self).index_to_freq(index, mean_time)) for index, value in enumerate(fft)])
+        fft = np.array([value * self.transfer_function(type(self).index_to_freq(index, mean_time)) for index, value in enumerate(fft)])
         ifft = np.fft.ifft(fft)
 
         self.data.append(DataPoint(time=filtered_data[index_base].time, value=ifft[index_base].real))
 
+
+class BandPass(Equalizer):
+    @staticmethod
+    def transfer_function(frequency):
+        return exp( - (abs(frequency)-10)**2 / 12.5 )
 
 class RPeaks:
     TIME_WINDOW = 5
@@ -186,7 +180,7 @@ class ECG:
     def __init__(self, serial_name):
         self.start_time = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
         self.raw_data = RawData(serial_name)
-        self.band_pass = BandPass(self.raw_data)
+        self.band_pass = Equalizer(self.raw_data, transfer_function=lambda frequency : exp( - (abs(frequency)-10)**2 / 12.5 ))
         self.r_peaks_raw = RPeaks(self.raw_data)
         self.r_peaks = RPeaks(self.band_pass)
         self.heart_rate = HeartRate(self.r_peaks)
@@ -248,7 +242,7 @@ if __name__ == "__main__":
     if sys.platform == "darwin":
         serial_name = "/dev/tty.usbmodemFD1241"
     else:
-        serial_name = "/dev/ttyACM1"
+        serial_name = "/dev/ttyACM0"
 
     ecg = ECG(serial_name)
 
