@@ -11,6 +11,9 @@ class RawData:
     SPLIT_STRING = "\r\n".encode()
     WARMUP_STEPS = 100
 
+    MIN_VALUE = 0
+    MAX_VALUE = 1000
+
     def __init__(self, serial_name):
         try:
             self.serial_device = serial.Serial(serial_name, RawData.BAUD_RATE, timeout=0.5)
@@ -31,7 +34,8 @@ class RawData:
             return
 
         data_value = int(data_value)
-        self.data.append(DataPoint(time=time.time(), value=data_value))
+        if data_value >= RawData.MIN_VALUE and data_value <= RawData.MAX_VALUE:
+            self.data.append(DataPoint(time=time.time(), value=data_value))
 
     def parse(self):
         split_position = self.buffer.find(RawData.SPLIT_STRING)
