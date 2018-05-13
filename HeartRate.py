@@ -10,6 +10,7 @@ class HeartRate:
     @staticmethod
     def calculate_heart_rate(data):
         time_distance = data[-1].time - data[0].time
+        print(60 * (len(data) - 1) / time_distance)
         return 60 * (len(data) - 1) / time_distance
 
     def update(self):

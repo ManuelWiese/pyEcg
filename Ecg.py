@@ -9,6 +9,9 @@ from math import exp
 from DataPoint import DataPoint
 from RawData import RawData
 from Equalizer import Equalizer
+from Derivative import Derivative
+from Squaring import Squaring
+from Integration import Integration
 from RPeaks import RPeaks
 from HeartRate import HeartRate
 
@@ -20,15 +23,19 @@ class ECG:
 
         self.raw_data = RawData(serial_name)
         self.band_pass = Equalizer(self.raw_data, transfer_function=lambda frequency : 1 if abs(frequency) > 5 and abs(frequency) < 15 else 0 )
-        self.r_peaks_raw = RPeaks(self.raw_data)
-        self.r_peaks = RPeaks(self.band_pass)
+        self.derivative = Derivative(self.band_pass)
+        self.squaring = Squaring(self.derivative)
+        self.integration = Integration(self.squaring)
+        self.r_peaks = RPeaks(self.integration, self.band_pass)
         self.heart_rate = HeartRate(self.r_peaks)
 
     def update(self):
         self.raw_data.update()
         self.band_pass.update()
+        self.derivative.update()
+        self.squaring.update()
+        self.integration.update()
         self.r_peaks.update()
-        self.r_peaks_raw.update()
         self.heart_rate.update()
 
     def save(self):
@@ -50,27 +57,39 @@ class ECG:
 
         plt.plot(X, Y)
 
-        X = [data_point.time - self.start_time for data_point in self.r_peaks_raw.data]
-        Y = [data_point.value for data_point in self.r_peaks_raw.data]
+        X = [data_point.time - self.start_time for data_point in self.r_peaks.data]
+        max_y = max(Y)
+        min_y = min(Y)
 
-        plt.plot(X, Y, "ro")
+        for r_time in X:
+            plt.plot([r_time, r_time], [min_y, max_y], "b")
+
 
         plt.figure()
-
-        X = [data_point.time - self.start_time for data_point in self.r_peaks.data]
-        Y = [data_point.value for data_point in self.r_peaks.data]
-
-        plt.plot(X, Y, "ro")
 
         X = [data_point.time - self.start_time for data_point in self.band_pass.data]
         Y = [data_point.value for data_point in self.band_pass.data]
 
         plt.plot(X, Y)
 
+        X = [data_point.time - self.start_time for data_point in self.r_peaks.data]
+        max_y = max(Y)
+        min_y = min(Y)
+
+        for r_time in X:
+            plt.plot([r_time, r_time], [min_y, max_y], "b")
+
         plt.figure()
 
         X = [data_point.time - self.start_time for data_point in self.heart_rate.data]
         Y = [data_point.value for data_point in self.heart_rate.data]
+
+        plt.plot(X, Y)
+
+        plt.figure()
+
+        X = [data_point.time - self.start_time for data_point in self.integration.data]
+        Y = [data_point.value for data_point in self.integration.data]
 
         plt.plot(X, Y)
 
