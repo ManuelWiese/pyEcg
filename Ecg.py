@@ -15,7 +15,12 @@ from Squaring import Squaring
 from Integration import Integration
 from RPeaks import RPeaks
 from HeartRate import HeartRate
+from TimeIntervals import TimeIntervals
+from StandardDeviation import StandardDeviation
+from RMSSD import RMSSD
+from PRR50 import PRR50
 
+import numpy as np
 
 class ECG:
     def __init__(self, serial_name):
@@ -30,6 +35,10 @@ class ECG:
         self.integration = Integration(self.squaring)
         self.r_peaks = RPeaks(self.integration, self.band_pass)
         self.heart_rate = HeartRate(self.r_peaks)
+        self.rr_intervals = TimeIntervals(self.r_peaks)
+        self.sdrr = StandardDeviation(self.rr_intervals)
+        self.rmssd = RMSSD(self.rr_intervals)
+        self.prr50 = PRR50(self.rr_intervals)
 
     def update(self):
         self.raw_data.update()
@@ -39,6 +48,10 @@ class ECG:
         self.integration.update()
         self.r_peaks.update()
         self.heart_rate.update()
+        self.rr_intervals.update()
+        self.sdrr.update()
+        self.rmssd.update()
+        self.prr50.update()
 
     def save(self):
         print("Saving data to {}.json ...".format(self.start_timestamp))
@@ -97,9 +110,34 @@ class ECG:
 
         plt.figure()
 
-        Y = [self.r_peaks.data[index+1].time - self.r_peaks.data[index].time for index in range(len(self.r_peaks.data)-1)]
+        Y = [dp.value for dp in self.rr_intervals.data]
 
         plt.bar(range(len(Y)), Y)
+
+        plt.figure()
+
+        X_sdrr = [data_point.time - self.start_time for data_point in self.sdrr.data]
+        Y_sdrr = [data_point.value for data_point in self.sdrr.data]
+        X_rmssd = [data_point.time - self.start_time for data_point in self.rmssd.data]
+        Y_rmssd = [data_point.value for data_point in self.rmssd.data]
+
+        plt.plot(X_sdrr, Y_sdrr, label="sdrr")
+        plt.plot(X_rmssd, Y_rmssd, label="rmssd")
+        plt.legend(loc='upper left')
+
+        plt.figure()
+
+        X = [data_point.time - self.start_time for data_point in self.prr50.data]
+        Y = [data_point.value for data_point in self.prr50.data]
+
+        plt.plot(X, Y)
+
+        plt.figure()
+
+        time_intervals = TimeIntervals(self.raw_data)
+        time_intervals.update()
+
+        plt.hist([dp.value for dp in time_intervals.data], bins=np.linspace(0,0.02,100))
 
         plt.show()
 

@@ -6,7 +6,7 @@ from DataPoint import DataPoint
 
 class RawData:
 
-    BAUD_RATE = 38400
+    BAUD_RATE = 115200
     PACKAGE_SIZE = 5
     SPLIT_STRING = "\r\n".encode()
     WARMUP_STEPS = 100

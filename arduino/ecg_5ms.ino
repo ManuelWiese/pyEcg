@@ -2,7 +2,7 @@ void setup() {
   pinMode(10,INPUT);
   pinMode(11,INPUT);
 
-  Serial.begin(38400);
+  Serial.begin(115200);
 }
 
 void loop() {
@@ -14,4 +14,3 @@ void loop() {
   }
   delay(5);
 }
-
