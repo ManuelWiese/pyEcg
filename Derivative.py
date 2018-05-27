@@ -15,10 +15,27 @@ class Derivative:
         return DataPoint(time=signal[2].time, value=result)
 
 
-    def update(self):
+    def get_next_window(self):
         if len(self.data_source.data) < type(self).WINDOW_SIZE:
-            return
+            return None
 
-        filtered_data = self.data_source.data[-type(self).WINDOW_SIZE:]
+        if len(self.data) == 0:
+            return self.data_source.data[:type(self).WINDOW_SIZE]
 
-        self.data.append(type(self).transformation(filtered_data))
+        last_time = self.data[-1].time
+
+        for i in range(len(self.data_source.data) - 1, -1, -1):
+            if self.data_source.data[i].time == last_time:
+                sliced = self.data_source.data[i-1:i+4]
+                if len(sliced) == type(self).WINDOW_SIZE:
+                    return sliced
+                return None
+
+    def update(self):
+        while True:
+            window = self.get_next_window()
+
+            if window is None:
+                return
+
+            self.data.append(type(self).transformation(window))

@@ -13,7 +13,10 @@ class RPeaks:
         self.raw_data = raw_data
 
     def get_time_window(self):
-        window_start_time = self.data_source.data[-1].time - type(self).TIME_WINDOW
+        if len(self.data) and self.data_source.data[-1].time - self.data[-1].time > type(self).TIME_WINDOW:
+            window_start_time = self.data[-1].time + 0.1
+        else:
+            window_start_time = self.data_source.data[-1].time - type(self).TIME_WINDOW
 
         filtered_data = []
 
@@ -51,7 +54,7 @@ class RPeaks:
         filtered_values = [data_point.value for data_point in data_points]
         max_height = max(filtered_values)
 
-        x_peaks, _ = find_peaks(filtered_values, distance=40, prominence=0.3*max_height)
+        x_peaks, _ = find_peaks(filtered_values, prominence=0.1*max_height)
 
         times = [data_points[index].time for index in x_peaks]
 

@@ -8,6 +8,7 @@ from math import exp
 
 from DataPoint import DataPoint
 from RawData import RawData
+from Butterworth import Butterworth
 from Equalizer import Equalizer
 from Derivative import Derivative
 from Squaring import Squaring
@@ -22,7 +23,8 @@ class ECG:
         self.start_timestamp = datetime.datetime.fromtimestamp(self.start_time).strftime('%Y-%m-%d %H:%M:%S')
 
         self.raw_data = RawData(serial_name)
-        self.band_pass = Equalizer(self.raw_data, transfer_function=lambda frequency : 1 if abs(frequency) > 5 and abs(frequency) < 15 else 0 )
+        # self.band_pass = Equalizer(self.raw_data, transfer_function=lambda frequency : 1 if abs(frequency) > 5 and abs(frequency) < 15 else 0 )
+        self.band_pass = Butterworth(self.raw_data, 5, 15)
         self.derivative = Derivative(self.band_pass)
         self.squaring = Squaring(self.derivative)
         self.integration = Integration(self.squaring)
@@ -79,6 +81,13 @@ class ECG:
         for r_time in X:
             plt.plot([r_time, r_time], [min_y, max_y], "b")
 
+        # plt.figure()
+        #
+        # X = [data_point.time - self.start_time for data_point in self.integration.data]
+        # Y = [data_point.value for data_point in self.integration.data]
+        #
+        # plt.plot(X, Y)
+
         plt.figure()
 
         X = [data_point.time - self.start_time for data_point in self.heart_rate.data]
@@ -88,10 +97,9 @@ class ECG:
 
         plt.figure()
 
-        X = [data_point.time - self.start_time for data_point in self.integration.data]
-        Y = [data_point.value for data_point in self.integration.data]
+        Y = [self.r_peaks.data[index+1].time - self.r_peaks.data[index].time for index in range(len(self.r_peaks.data)-1)]
 
-        plt.plot(X, Y)
+        plt.bar(range(len(Y)), Y)
 
         plt.show()
 
