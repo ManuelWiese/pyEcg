@@ -67,12 +67,12 @@ class ECG:
             json.dump(model, outfile)
 
     def plot(self):
-        X = [data_point.time - self.start_time for data_point in self.raw_data.data]
+        X = [data_point.time for data_point in self.raw_data.data]
         Y = [data_point.value for data_point in self.raw_data.data]
 
         plt.plot(X, Y)
 
-        X = [data_point.time - self.start_time for data_point in self.r_peaks.data]
+        X = [data_point.time for data_point in self.r_peaks.data]
         max_y = max(Y)
         min_y = min(Y)
 
@@ -82,12 +82,12 @@ class ECG:
 
         plt.figure()
 
-        X = [data_point.time - self.start_time for data_point in self.band_pass.data]
+        X = [data_point.time for data_point in self.band_pass.data]
         Y = [data_point.value for data_point in self.band_pass.data]
 
         plt.plot(X, Y)
 
-        X = [data_point.time - self.start_time for data_point in self.r_peaks.data]
+        X = [data_point.time for data_point in self.r_peaks.data]
         max_y = max(Y)
         min_y = min(Y)
 
@@ -96,14 +96,14 @@ class ECG:
 
         # plt.figure()
         #
-        # X = [data_point.time - self.start_time for data_point in self.integration.data]
+        # X = [data_point.time for data_point in self.integration.data]
         # Y = [data_point.value for data_point in self.integration.data]
         #
         # plt.plot(X, Y)
 
         plt.figure()
 
-        X = [data_point.time - self.start_time for data_point in self.heart_rate.data]
+        X = [data_point.time for data_point in self.heart_rate.data]
         Y = [data_point.value for data_point in self.heart_rate.data]
 
         plt.plot(X, Y)
@@ -116,9 +116,9 @@ class ECG:
 
         plt.figure()
 
-        X_sdrr = [data_point.time - self.start_time for data_point in self.sdrr.data]
+        X_sdrr = [data_point.time for data_point in self.sdrr.data]
         Y_sdrr = [data_point.value for data_point in self.sdrr.data]
-        X_rmssd = [data_point.time - self.start_time for data_point in self.rmssd.data]
+        X_rmssd = [data_point.time for data_point in self.rmssd.data]
         Y_rmssd = [data_point.value for data_point in self.rmssd.data]
 
         plt.plot(X_sdrr, Y_sdrr, label="sdrr")
@@ -127,7 +127,7 @@ class ECG:
 
         plt.figure()
 
-        X = [data_point.time - self.start_time for data_point in self.prr50.data]
+        X = [data_point.time for data_point in self.prr50.data]
         Y = [data_point.value for data_point in self.prr50.data]
 
         plt.plot(X, Y)
@@ -137,7 +137,7 @@ class ECG:
         time_intervals = TimeIntervals(self.raw_data)
         time_intervals.update()
 
-        plt.hist([dp.value for dp in time_intervals.data], bins=np.linspace(0,0.02,100))
+        plt.hist([dp.value for dp in time_intervals.data], bins=np.linspace(0.0049,0.0051,100))
 
         plt.show()
 
