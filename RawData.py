@@ -33,7 +33,7 @@ class RawData:
             self.warmup_counter += 1
             return
 
-        time = int(time) / 1000
+        time = int(time) / 1000000
         value = int(value)
 
         if self.start_time is None:

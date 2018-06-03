@@ -137,7 +137,9 @@ class ECG:
         time_intervals = TimeIntervals(self.raw_data)
         time_intervals.update()
 
-        plt.hist([dp.value for dp in time_intervals.data], bins=np.linspace(0.0049,0.0051,100))
+        intervals = [dp.value for dp in time_intervals.data]
+
+        plt.hist(intervals, bins=np.linspace(min(intervals),max(intervals),100))
 
         plt.show()
 

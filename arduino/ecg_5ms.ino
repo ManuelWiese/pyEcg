@@ -5,13 +5,13 @@ void setup() {
   Serial.begin(115200);
 }
 
-unsigned long millis_pre = 0;
-unsigned long millis_interval = 5;
+unsigned long micros_pre = 0;
+unsigned long micros_interval = 5000;
 
 void loop() {
-  millis_pre = millis();
+  micros_pre = micros();
   
-  Serial.print(millis_pre);
+  Serial.print(micros_pre);
   Serial.print("||");
   
   if((digitalRead(10)==1)||(digitalRead(11)==1)){
@@ -21,7 +21,7 @@ void loop() {
       Serial.println(analogRead(A1));
   }
   
-  while(millis() < millis_pre + millis_interval) {
+  while(micros() < micros_pre + micros_interval) {
      //waiting 
   }
 }
