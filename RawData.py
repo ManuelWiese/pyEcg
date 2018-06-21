@@ -1,12 +1,13 @@
 import serial
 
 from DataPoint import DataPoint
+import time
 
 
 class RawData:
 
     BAUD_RATE = 115200
-    PACKAGE_SIZE = 5
+    PACKAGE_SIZE = 20
     SPLIT_STRING = "\r\n".encode()
     WARMUP_STEPS = 100
 
@@ -19,6 +20,11 @@ class RawData:
         except serial.SerialException as exception:
             print(exception)
             raise(exception)
+
+        time.sleep(.1)
+
+        self.serial_device.reset_input_buffer()
+        self.serial_device.reset_output_buffer()
 
         self.buffer = b""
         self.data = []

@@ -4,7 +4,7 @@ import datetime
 
 import json
 import matplotlib.pyplot as plt
-from math import exp
+from math import exp, sqrt
 
 from DataPoint import DataPoint
 from RawData import RawData
@@ -19,8 +19,10 @@ from TimeIntervals import TimeIntervals
 from StandardDeviation import StandardDeviation
 from RMSSD import RMSSD
 from PRR50 import PRR50
+from SpectralPower import SpectralPower
 
 import numpy as np
+
 
 class ECG:
     def __init__(self, serial_name):
@@ -39,6 +41,8 @@ class ECG:
         self.sdrr = StandardDeviation(self.rr_intervals)
         self.rmssd = RMSSD(self.rr_intervals)
         self.prr50 = PRR50(self.rr_intervals)
+        self.lf = SpectralPower(self.rr_intervals, 0.04, 0.15)
+        self.hf = SpectralPower(self.rr_intervals, 0.15, 0.4)
 
     def update(self):
         self.raw_data.update()
@@ -52,6 +56,8 @@ class ECG:
         self.sdrr.update()
         self.rmssd.update()
         self.prr50.update()
+        self.lf.update()
+        self.hf.update()
 
     def save(self):
         print("Saving data to {}.json ...".format(self.start_timestamp))
@@ -110,12 +116,6 @@ class ECG:
 
         plt.figure()
 
-        Y = [dp.value for dp in self.rr_intervals.data]
-
-        plt.bar(range(len(Y)), Y)
-
-        plt.figure()
-
         X_sdrr = [data_point.time for data_point in self.sdrr.data]
         Y_sdrr = [data_point.value for data_point in self.sdrr.data]
         X_rmssd = [data_point.time for data_point in self.rmssd.data]
@@ -134,12 +134,23 @@ class ECG:
 
         plt.figure()
 
-        time_intervals = TimeIntervals(self.raw_data)
-        time_intervals.update()
+        X_lf = [data_point.time for data_point in self.lf.data]
+        Y_lf = [data_point.value for data_point in self.lf.data]
+        X_hf = [data_point.time for data_point in self.hf.data]
+        Y_hf = [data_point.value for data_point in self.hf.data]
 
-        intervals = [dp.value for dp in time_intervals.data]
+        plt.plot(X_hf, Y_hf)
+        plt.plot(X_lf, Y_lf)
+        plt.plot(X_hf, [(lf/hf if hf > 0 else 0) for lf,hf in zip(Y_lf, Y_hf)])
 
-        plt.hist(intervals, bins=np.linspace(min(intervals),max(intervals),100))
+        # plt.figure()
+        #
+        # time_intervals = TimeIntervals(self.raw_data)
+        # time_intervals.update()
+        #
+        # intervals = [dp.value for dp in time_intervals.data]
+        #
+        # plt.hist(intervals, bins=np.linspace(min(intervals),max(intervals),100))
 
         plt.show()
 
